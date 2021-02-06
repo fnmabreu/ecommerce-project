@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql
+    container_name: ecommerce-project-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: full-stack-ecommerce
+      MYSQL_USER: ecommerceapp
+      MYSQL_PASSWORD: ecommerceapp
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db-scripts:/docker-entrypoint-initdb.d
+      - ./storage/mysql-data:/var/lib/mysql
