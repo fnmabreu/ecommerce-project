@@ -9,7 +9,7 @@
             <div class="row">
 
                 <!-- loop over the collection of products -->
-                <div *ngFor="let tempProduct of products" class="col-md-3">
+                <div *ngFor="let tempProduct of products" class="col-md-2">
 
                     <div class="product-box">
 
@@ -21,8 +21,8 @@
                             <h1>{{ tempProduct.name }}</h1>
                         </a>
                         
-                        <div class="price">{{ tempProduct.unitPrice | currency:'USD' }}</div>
-                        <a href="#" class="primary-btn">Add to cart</a>
+                        <div class="price">{{ tempProduct.unitPrice | currency:'EUR' }}</div>
+                        <button (click)="addToCart(tempProduct)" class="btn btn-primary btn-sm">Add to cart</button>
                     </div>
 
                 </div>
@@ -40,9 +40,10 @@
                     <div class="col-md-6"></div>
                     <div class="col-md-6">
                         <div class="row">
-                            <div class="col-md-9" style="padding-left: 30%">
+                            <div class="col-md-9" style="padding-left: 25%">
 
-                                <ngb-pagination [(page)]="thePageNumber"
+                                <ngb-pagination class="d-flex justify-content-center"
+                                                [(page)]="thePageNumber"
                                                 [pageSize]="thePageSize"
                                                 [collectionSize]="theTotalElements"
                                                 [maxSize]="5"
