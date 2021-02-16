@@ -1,8 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Country } from 'src/app/common/country';
+import { Order } from 'src/app/common/order';
+import { OrderItem } from 'src/app/common/order-item';
+import { Purchase } from 'src/app/common/purchase';
 import { State } from 'src/app/common/state';
 import { CartService } from 'src/app/services/cart.service';
+import { CheckoutService } from 'src/app/services/checkout.service';
 import { ShopFormService } from 'src/app/services/shop-form.service';
 import { ShopValidators } from 'src/app/validators/shop-validators';
 
@@ -26,7 +31,11 @@ export class CheckoutComponent implements OnInit {
   shippingAddressStates: State[] = [];
   billingAddressStates: State[] = [];
 
-  constructor(private formBuilder: FormBuilder, private shopFormService: ShopFormService, private cartService: CartService) { }
+  constructor(private formBuilder: FormBuilder,
+    private shopFormService: ShopFormService,
+    private cartService: CartService,
+    private checkoutService: CheckoutService,
+    private router: Router) { }
 
   ngOnInit(): void {
 
@@ -64,11 +73,9 @@ export class CheckoutComponent implements OnInit {
 
     // populate credit card months
     const startMonth: number = new Date().getMonth() + 1;
-    console.log("startMont: " + startMonth);
 
     this.shopFormService.getCreditCardMonths(startMonth).subscribe(
       data => {
-        console.log("Retrieved credit card months: " + JSON.stringify(data));
         this.creditCardMonths = data;
       }
     );
@@ -76,7 +83,6 @@ export class CheckoutComponent implements OnInit {
     // populate credit card years
     this.shopFormService.getCreditCardYears().subscribe(
       data => {
-        console.log("Retrieved credit card years: " + JSON.stringify(data));
         this.creditCardYears = data;
       }
     );
@@ -84,7 +90,6 @@ export class CheckoutComponent implements OnInit {
     // populate countries
     this.shopFormService.getCountries().subscribe(
       data => {
-        console.log("Retrieved countries: " + JSON.stringify(data));
         this.countries = data;
       }
     );
@@ -128,13 +133,66 @@ export class CheckoutComponent implements OnInit {
 
     if (this.checkoutFormGroup.invalid) {
       this.checkoutFormGroup.markAllAsTouched();
+      return;
     }
 
-    console.log(this.checkoutFormGroup.get('customer').value);
-    console.log("The email address is: " + this.checkoutFormGroup.get('customer').value.email);
+    // set up order
+    let order = new Order();
+    order.totalPrice = this.totalPrice;
+    order.totalQuantity = this.totalQuantity;
 
-    console.log("The shipping address country is: " + this.checkoutFormGroup.get('shippingAddress').value.country.name);
-    console.log("The shipping address state is: " + this.checkoutFormGroup.get('shippingAddress').value.state.name);
+    // get cart items
+    const cartItems = this.cartService.cartItems;
+
+    // create orderItems from cartItems
+    let orderItems: OrderItem[] = cartItems.map(tempCartItem => new OrderItem(tempCartItem));
+
+    // set up purchase
+    let purchase = new Purchase();
+
+    // populate purchase
+    purchase.customer = this.checkoutFormGroup.controls['customer'].value;
+    purchase.order = order;
+    purchase.orderItems = orderItems;
+
+    // populate purchase - shipping address
+    purchase.shippingAddress = this.checkoutFormGroup.controls['shippingAddress'].value;
+    const shippingState: State = JSON.parse(JSON.stringify(purchase.shippingAddress.state));
+    const shippingCountry: Country = JSON.parse(JSON.stringify(purchase.shippingAddress.country));
+    purchase.shippingAddress.state = shippingState.name;
+    purchase.shippingAddress.country = shippingCountry.name;
+
+    // populate purchase - billing address
+    purchase.billingAddress = this.checkoutFormGroup.controls['billingAddress'].value;
+    const billingState: State = JSON.parse(JSON.stringify(purchase.billingAddress.state));
+    const billingCountry: Country = JSON.parse(JSON.stringify(purchase.billingAddress.country));
+    purchase.billingAddress.state = billingState.name;
+    purchase.billingAddress.country = billingCountry.name;
+
+    // call REST API
+    this.checkoutService.placeOrder(purchase).subscribe({
+      next: response => {
+        alert(`Your order had been received.\nOrder tracking number: ${response.orderTrackingNumber}`);
+
+        // reset cart
+        this.resetCart();
+      },
+      error: err => {
+        alert(`There was an error: ${err.message}`);
+      }
+    });
+  }
+
+  resetCart() {
+    this.cartService.cartItems = [];
+    this.cartService.totalPrice.next(0);
+    this.cartService.totalQuantity.next(0);
+
+    // reset the form
+    this.checkoutFormGroup.reset();
+
+    // navigate back to the products page
+    this.router.navigateByUrl("/products");
   }
 
   handleMonthsAndYears() {
@@ -155,12 +213,8 @@ export class CheckoutComponent implements OnInit {
 
     this.shopFormService.getCreditCardMonths(startMonth).subscribe(
       data => {
-        console.log("Retrieved credit card months: " + JSON.stringify(data));
         this.creditCardMonths = data;
       });
-
-    // select first item by default
-    creditCardFormGroup.get('expirationMonth').setValue(startMonth);
   }
 
   getStates(formGroupName: string) {
