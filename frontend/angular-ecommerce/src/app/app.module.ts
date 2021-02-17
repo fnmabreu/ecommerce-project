@@ -21,13 +21,15 @@ import {
   OKTA_CONFIG,
   OktaAuthModule,
   OktaCallbackComponent,
+  OktaAuthGuard,
 } from '@okta/okta-angular';
 
 import appConfig from './config/app-config';
+import { MembersPageComponent } from './components/members-page/members-page.component';
 
 const oktaConfig = Object.assign(
   {
-    onAuthRequired: (injector) => {
+    onAuthRequired: (oktaAuth, injector) => {
       const router = injector.get(Router);
 
       // Redirect the user to your custom login page
@@ -38,6 +40,7 @@ const oktaConfig = Object.assign(
 );
 
 const routes: Routes = [
+  { path: 'members', component: MembersPageComponent, canActivate: [ OktaAuthGuard ] },
   { path: 'login/callback', component: OktaCallbackComponent },
   { path: 'login', component: LoginComponent },
   { path: 'checkout', component: CheckoutComponent },
@@ -63,6 +66,7 @@ const routes: Routes = [
     CheckoutComponent,
     LoginComponent,
     LoginStatusComponent,
+    MembersPageComponent,
   ],
   imports: [
     RouterModule.forRoot(routes),
